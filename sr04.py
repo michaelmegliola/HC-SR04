@@ -4,33 +4,42 @@ import time
 GPIO.setmode(GPIO.BOARD)
 
 class Sr04():
-    def __init__(self, pins):
-        self.pins = pins
-        for pinpair in self.pins:
-            GPIO.setup(pinpair[0], GPIO.OUT)
-            GPIO.setup(pinpair[1], GPIO.IN)
-    
-    def get_distance(self):
-        results = []
-        StartTime = time.time()
-        StopTime = time.time()
-        for pinpair in self.pins:
-            GPIO.output(pinpair[0], True)         # pulse to start a reading 
-            time.sleep(0.00001)
-            GPIO.output(pinpair[0], False)
-    
-            while GPIO.input(pinpair[1]) == 0:       # catch time until state changes
-                StartTime = time.time()
-            while GPIO.input(pinpair[1]) == 1:
-                StopTime = time.time()
-            TimeElapsed = StopTime - StartTime      # calculate time
-            distance = (TimeElapsed * 34300) / 2    # 34300 cm/s round trip - halve to get distance to target
+    def __init__(self, trigger_pin, echo_pin):
+        self.trigger_pin = trigger_pin
+        self.echo_pin = echo_pin
+        self.distance = 0
+        self.starttime = 0.0
+        self.stoptime = 0.0
+        GPIO.setup(self.trigger_pin, GPIO.OUT)
+        GPIO.setup(self.echo_pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
-            results.append(distance)
-            #time.sleep(.25)
-        return results
+    
+    def read_distance(self):
+        GPIO.output(self.trigger_pin, True)           # pulse to start a reading 
+        time.sleep(0.00001)
+        GPIO.output(self.trigger_pin, False)
+        while GPIO.input(self.echo_pin) == 0:       # catch time until state changes
+            StartTime = time.time()
+        while GPIO.input(self.echo_pin) == 1:
+            StopTime = time.time()
+        TimeElapsed = StopTime - StartTime      # calculate time
+        self.distance = (TimeElapsed * 34300) / 2    # 34300 cm/s round trip - halve to get distance to target
+        return self.distance
+
+    def __str__(self):
+        return str(self.distance)
         
-x = Sr04(((16,24),(18,32),(19,36),(21,38),(22,40)))
-while True:
-    results = x.get_distance()
-    print(results)
+readings = []
+a = Sr04(16,24)
+b = Sr04(18,32)
+c = Sr04(19,36)
+d = Sr04(21,38)
+e = Sr04(22,40)
+for n in range(5):
+    for x in (a,b,c,d,e):
+        readings.append(x.read_distance())
+        time.sleep(.10)
+    print(readings)
+    readings = []
+
+GPIO.cleanup()
